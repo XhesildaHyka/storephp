@@ -22,7 +22,19 @@ if (!$product) {
     exit;
 }
 
+// ✅ sizes arrays
+$shoeSizes = array_map('strval', range(30, 46)); // 30..46
+$clothesSizes = ['XS','S','M','L','XL'];
+
 $message = "";
+
+// fetch stock map for this product
+$stockMap = [];
+$st = $conn->prepare("SELECT size, stock FROM product_sizes WHERE product_id = ?");
+$st->execute([$id]);
+while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+    $stockMap[(string)$r['size']] = (int)$r['stock'];
+}
 
 // update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -33,42 +45,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $gender = $_POST['gender'] ?? 'men';
 
     // prices
-    $originalPrice = (float)($_POST['original_price'] ?? $product['original_price'] ?? $product['price']);
-    $discount = (int)($_POST['discount_percent'] ?? 0);
+    $originalPrice = (float)($_POST['original_price'] ?? ($product['original_price'] ?? $product['price']));
+    if ($originalPrice < 0) $originalPrice = 0;
+
+    $discount = isset($_POST['discount_percent']) ? (int)$_POST['discount_percent'] : 0;
     if ($discount < 0) $discount = 0;
     if ($discount > 90) $discount = 90;
 
-    $newPrice = $originalPrice;
-    if ($discount > 0) {
-        $newPrice = $originalPrice * (1 - ($discount / 100));
-    }
-
     $isNew = isset($_POST['is_new']) ? 1 : 0;
     $isOffer = isset($_POST['is_offer']) ? 1 : 0;
-    if ($discount > 0) $isOffer = 1;
 
-    // image handling
+    if ($isOffer === 0) {
+        $discount = 0;
+    }
+
+    $newPrice = $originalPrice;
+    if ($isOffer === 1 && $discount > 0) {
+        $newPrice = $originalPrice * (1 - ($discount / 100));
+    }
+    $newPrice = round($newPrice, 2);
+
+    // image
     $imageName = $product['image'];
-
     if (isset($_FILES['image']) && $_FILES['image']['error'] === 0) {
         $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
         $newImageName = uniqid() . "." . $ext;
         $uploadPath = "../public/uploads/" . $newImageName;
 
         if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadPath)) {
-            // delete old image file
             $oldPath = "../public/uploads/" . $imageName;
-            if ($imageName && file_exists($oldPath)) {
-                unlink($oldPath);
-            }
+            if ($imageName && file_exists($oldPath)) unlink($oldPath);
             $imageName = $newImageName;
         }
     }
 
+    // update product
     $update = $conn->prepare("
         UPDATE products SET
             name = :name,
             description = :description,
+            material = :material,
             price = :price,
             original_price = :original_price,
             discount_percent = :discount_percent,
@@ -83,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $update->execute([
         ':name' => $name,
         ':description' => $description,
+        ':material' => $_POST['material'] ?? null,
         ':price' => $newPrice,
         ':original_price' => $originalPrice,
         ':discount_percent' => $discount,
@@ -94,14 +111,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':id' => $id
     ]);
 
-    $message = "✅ Product updated!";
+    // ✅ update stock per size (FIXED)
+    $sizesList = ($category === 'clothes') ? $clothesSizes : $shoeSizes;
 
-    // refresh product data for display
+    // OPTIONAL: remove sizes that are not in this category (prevents junk sizes staying in DB)
+    $placeholders = implode(',', array_fill(0, count($sizesList), '?'));
+    $del = $conn->prepare("DELETE FROM product_sizes WHERE product_id = ? AND size NOT IN ($placeholders)");
+    $del->execute(array_merge([$id], $sizesList));
+
+    // ✅ UPSERT (insert or update)
+    $up = $conn->prepare("
+        INSERT INTO product_sizes (product_id, size, stock)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE stock = VALUES(stock)
+    ");
+
+    foreach ($sizesList as $sz) {
+        $field = "stock_" . $sz;
+        $stock = isset($_POST[$field]) ? (int)$_POST[$field] : 0;
+        if ($stock < 0) $stock = 0;
+
+        $up->execute([$id, (string)$sz, $stock]);
+    }
+
+    $message = "✅ Product updated (and stock saved)!";
+    
+    // refresh product
     $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
     $stmt->execute([$id]);
     $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // refresh stock map
+    $stockMap = [];
+    $st = $conn->prepare("SELECT size, stock FROM product_sizes WHERE product_id = ?");
+    $st->execute([$id]);
+    while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+        $stockMap[(string)$r['size']] = (int)$r['stock'];
+    }
 }
 ?>
+
+<style>
+.stock-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:10px;
+  max-width: 980px;
+}
+.stock-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border:1px solid rgba(0,0,0,.15);
+  border-radius:12px;
+  background:#fff;
+}
+.stock-item label{
+  font-weight:700;
+  min-width:34px;
+}
+.stock-item input{
+  width:90px;
+  padding:6px 8px;
+}
+</style>
 
 <h2>Edit Product</h2>
 
@@ -114,6 +189,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="text" name="name" value="<?= htmlspecialchars($product['name']) ?>" required><br><br>
 
     <textarea name="description"><?= htmlspecialchars($product['description']) ?></textarea><br><br>
+    <input type="text" name="material"
+           value="<?= htmlspecialchars($product['material'] ?? '') ?>"
+           placeholder="Material (e.g. Leather, Cotton)"><br><br>
 
     <label>Original price</label><br>
     <input type="number" step="0.01" name="original_price"
@@ -144,6 +222,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <label><input type="checkbox" name="is_new" <?= !empty($product['is_new']) ? 'checked' : '' ?>> New Arrival</label>
     <label><input type="checkbox" name="is_offer" <?= !empty($product['is_offer']) ? 'checked' : '' ?>> Offer</label>
+
+    <hr>
+
+    <h3>Stock per size (<?= htmlspecialchars($product['category']) ?>)</h3>
+
+    <?php $list = ($product['category'] === 'clothes') ? $clothesSizes : $shoeSizes; ?>
+
+    <div class="stock-grid">
+        <?php foreach ($list as $sz): $sz = (string)$sz; ?>
+            <div class="stock-item">
+                <label><?= htmlspecialchars($sz) ?>:</label>
+                <input type="number"
+                       name="stock_<?= htmlspecialchars($sz) ?>"
+                       value="<?= (int)($stockMap[$sz] ?? 0) ?>"
+                       min="0">
+            </div>
+        <?php endforeach; ?>
+    </div>
 
     <br><br>
     <button type="submit">💾 Save Changes</button>

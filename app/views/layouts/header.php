@@ -12,7 +12,7 @@ $cartCount = isset($_SESSION['cart'])
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My Store</title>
+    <title>XARÈA</title>
     <link rel="stylesheet" href="/store-system/public/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -25,7 +25,7 @@ $cartCount = isset($_SESSION['cart'])
 
             <!-- LOGO -->
             <div class="logo">
-                <a href="?page=home">MyStore</a>
+                <a href="?page=home">XARÈA</a>
             </div>
 
             <!-- NAV LINKS -->
@@ -53,28 +53,37 @@ $cartCount = isset($_SESSION['cart'])
                 </div>
             </nav>
 
+            <!-- search -->
+            <form class="nav-search" method="GET" action="/store-system/public/">
+                <input type="hidden" name="page" value="search">
+                <input type="text" name="q" placeholder="Search shoes, clothes..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
+                <button type="submit">🔎</button>
+            </form>
+
+
+        
             <!-- AUTH -->
-    <div class="auth-links">
-        <?php if (isset($_SESSION['user'])) : ?>
+            <div class="auth-links">
+                <?php if (isset($_SESSION['user'])) : ?>
 
-            <!-- CART ICON -->
-            <a href="?page=cart" class="cart-link">
-                🛒
-                <?php if (!empty($cartCount)) : ?>
-                    <span class="cart-count"><?= $cartCount ?></span>
+                    <!-- CART ICON -->
+                    <a href="?page=cart" class="cart-link">
+                        🛒
+                        <?php if (!empty($cartCount)) : ?>
+                            <span class="cart-count"><?= $cartCount ?></span>
+                        <?php endif; ?>
+                    </a>
+
+                    <!-- LOGOUT -->
+                    <a href="?page=logout" class="btn">Logout</a>
+
+                <?php else : ?>
+
+                    <!-- LOGIN -->
+                    <a href="?page=login" class="btn">Login</a>
+
                 <?php endif; ?>
-            </a>
-
-            <!-- LOGOUT -->
-            <a href="?page=logout" class="btn">Logout</a>
-
-        <?php else : ?>
-
-            <!-- LOGIN -->
-            <a href="?page=login" class="btn">Login</a>
-
-        <?php endif; ?>
-    </div>
+            </div>
 
     </header>
     <script src="/store-system/public/js/slider.js"></script>  

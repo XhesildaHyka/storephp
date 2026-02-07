@@ -1,9 +1,17 @@
 <?php
-// (Optional) include header layout if you use it
 require __DIR__ . '/../layouts/header.php';
+$backUrl = $_SESSION['shop_back'] ?? '?page=home';
 
 $grandTotal = 0;
 ?>
+
+<?php if (!empty($_SESSION['order_success'])) : ?>
+    <div class="success-box">
+        <?= htmlspecialchars($_SESSION['order_success']) ?>
+    </div>
+    <?php unset($_SESSION['order_success']); ?>
+<?php endif; ?>
+
 
 <div class="cart-page">
 
@@ -18,8 +26,12 @@ $grandTotal = 0;
     <?php if (empty($cartItems)) : ?>
         <div class="cart-empty">
             <p>Your cart is empty.</p>
-            <a href="?page=home" class="btn-primary">Continue shopping</a>
+            <a href="<?= htmlspecialchars($backUrl) ?>"
+               class="btn-secondary btn-block">
+               Continue shopping
+            </a>
         </div>
+
     <?php else : ?>
 
         <div class="cart-layout">
@@ -29,30 +41,42 @@ $grandTotal = 0;
 
                 <?php foreach ($cartItems as $item) : ?>
                     <?php
-                        $lineTotal = $item['price'] * $item['quantity'];
+                        $qty = (int)($item['quantity'] ?? 1);
+                        $price = (float)($item['price'] ?? 0);
+                        $lineTotal = $price * $qty;
                         $grandTotal += $lineTotal;
+
+                        // safe fields
+                        $size = $item['size'] ?? '';
+                        $cartKey = $item['cart_key'] ?? ($item['product_id'] ?? '');
                     ?>
 
                     <div class="cart-item">
                         <div class="cart-item-img">
                             <img
-                                src="/store-system/public/uploads/<?= htmlspecialchars($item['image']) ?>"
-                                alt="<?= htmlspecialchars($item['name']) ?>"
+                                src="/store-system/public/uploads/<?= htmlspecialchars($item['image'] ?? '') ?>"
+                                alt="<?= htmlspecialchars($item['name'] ?? '') ?>"
                             >
                         </div>
 
                         <div class="cart-item-info">
-                            <div class="cart-item-name"><?= htmlspecialchars($item['name']) ?></div>
-                            <div class="cart-item-price">$<?= number_format($item['price'], 2) ?></div>
+                            <div class="cart-item-name"><?= htmlspecialchars($item['name'] ?? '') ?></div>
+
+                            <div class="cart-item-price">
+                                $<?= number_format($price, 2) ?>
+                                <?php if ($size !== '') : ?>
+                                    <span class="cart-size">Size: <?= htmlspecialchars($size) ?></span>
+                                <?php endif; ?>
+                            </div>
 
                             <div class="cart-item-controls">
                                 <div class="qty-control">
-                                    <a class="qty-btn" href="?page=cart-dec&id=<?= $item['product_id'] ?>">−</a>
-                                    <span class="qty-number"><?= (int)$item['quantity'] ?></span>
-                                    <a class="qty-btn" href="?page=cart-inc&id=<?= $item['product_id'] ?>">+</a>
+                                    <a class="qty-btn" href="?page=cart-dec&key=<?= urlencode($cartKey) ?>">−</a>
+                                    <span class="qty-number"><?= $qty ?></span>
+                                    <a class="qty-btn" href="?page=cart-inc&key=<?= urlencode($cartKey) ?>">+</a>
                                 </div>
 
-                                <a class="remove-btn" href="?page=remove-from-cart&id=<?= $item['product_id'] ?>">
+                                <a class="remove-btn" href="?page=remove-from-cart&key=<?= urlencode($cartKey) ?>">
                                     ✖ Remove
                                 </a>
                             </div>
@@ -76,11 +100,6 @@ $grandTotal = 0;
                     <span>$<?= number_format($grandTotal, 2) ?></span>
                 </div>
 
-                <div class="summary-row">
-                    <span>Shipping</span>
-                    <span class="muted">Calculated at checkout</span>
-                </div>
-
                 <div class="summary-divider"></div>
 
                 <div class="summary-row total">
@@ -89,7 +108,11 @@ $grandTotal = 0;
                 </div>
 
                 <a href="?page=checkout" class="btn-primary btn-block">Checkout</a>
-                <a href="?page=home" class="btn-secondary btn-block">Continue shopping</a>
+                <a href="<?= htmlspecialchars($backUrl) ?>"
+                   class="btn-secondary btn-block">
+                   Continue shopping
+                </a>
+
             </aside>
 
         </div>
@@ -97,7 +120,4 @@ $grandTotal = 0;
     <?php endif; ?>
 </div>
 
-<?php
-// (Optional) include footer layout if you use it
-// require __DIR__ . '/../layouts/footer.php';
-?>
+<?php require "../app/views/layouts/footer.php"; ?>

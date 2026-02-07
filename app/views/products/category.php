@@ -1,6 +1,5 @@
 <?php require __DIR__ . '/../layouts/header.php'; ?>
 
-
 <div class="category-page">
 
     <div class="category-hero">
@@ -35,39 +34,45 @@
             <?php foreach ($items as $row) : ?>
                 <div class="cat-card">
 
-                    <a class="cat-img" href="#">
+                    <!-- ✅ LINK TO PRODUCT PAGE -->
+                    <a class="cat-img" href="?page=product&id=<?= (int)$row['id'] ?>">
                         <img src="/store-system/public/uploads/<?= htmlspecialchars($row['image']) ?>"
                              alt="<?= htmlspecialchars($row['name']) ?>">
+
                         <?php if (!empty($row['is_new'])) : ?>
                             <span class="badge badge-new">NEW</span>
                         <?php endif; ?>
-                        <?php if (!empty($row['is_offer'])) : ?>
-                            <span class="badge badge-offer">OFFER</span>
+
+                        <?php if (!empty($row['is_offer']) && (int)($row['discount_percent'] ?? 0) > 0) : ?>
+                            <span class="badge badge-offer">-<?= (int)$row['discount_percent'] ?>%</span>
                         <?php endif; ?>
                     </a>
 
                     <div class="cat-body">
-                        <h3 class="cat-name"><?= htmlspecialchars($row['name']) ?></h3>
+                        <!-- ✅ LINK TO PRODUCT PAGE -->
+                        <a href="?page=product&id=<?= (int)$row['id'] ?>" style="text-decoration:none;color:inherit;">
+                            <h3 class="cat-name"><?= htmlspecialchars($row['name']) ?></h3>
+                        </a>
 
                         <div class="cat-price-row">
-                            <?php if (!empty($row['is_offer'])) : ?>
-                                <span class="price-old">$<?= number_format($row['price'] * 1.2, 2) ?></span>
-                                <span class="price-now">$<?= number_format($row['price'], 2) ?></span>
+                            <?php if (!empty($row['is_offer']) && (int)($row['discount_percent'] ?? 0) > 0) : ?>
+                                <span class="price-old">
+                                    $<?= number_format((float)($row['original_price'] ?? 0), 2) ?>
+                                </span>
+                                <span class="price-now">
+                                    $<?= number_format((float)$row['price'], 2) ?>
+                                </span>
                             <?php else : ?>
-                                <span class="price-now">$<?= number_format($row['price'], 2) ?></span>
+                                <span class="price-now">$<?= number_format((float)$row['price'], 2) ?></span>
                             <?php endif; ?>
                         </div>
 
-                        <?php if (isset($_SESSION['user'])) : ?>
-                            <form method="POST" action="?page=add-to-cart" class="cat-actions">
-                                <input type="hidden" name="product_id" value="<?= (int)$row['id'] ?>">
-                                <button type="submit" class="btn-primary btn-block">🛒 Add to cart</button>
-                            </form>
-                        <?php else : ?>
-                            <div class="cat-actions">
-                                <a class="btn-primary btn-block" href="?page=login">🔒 Login to buy</a>
-                            </div>
-                        <?php endif; ?>
+                        <div class="cat-actions">
+                            <!-- ✅ since size is required now -->
+                            <a class="btn-primary btn-block" href="?page=product&id=<?= (int)$row['id'] ?>">
+                                📏 Choose size
+                            </a>
+                        </div>
                     </div>
 
                 </div>
@@ -99,4 +104,5 @@
     <?php endif; ?>
 
 </div>
+
 <?php require __DIR__ . '/../layouts/footer.php'; ?>

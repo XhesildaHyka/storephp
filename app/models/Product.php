@@ -66,4 +66,67 @@ class Product {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getById($id)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM products WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getSizes($productId)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM product_sizes WHERE product_id = ? ORDER BY size+0, size");
+        $stmt->execute([$productId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function countSearch($q)
+    {
+    $q = trim($q);
+    if ($q === '') return 0;
+
+    $like = "%{$q}%";
+
+    $stmt = $this->conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM products
+        WHERE name LIKE :q
+           OR description LIKE :q
+           OR material LIKE :q
+           OR category LIKE :q
+           OR gender LIKE :q
+    ");
+    $stmt->execute([':q' => $like]);
+
+    return (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+    }
+
+    public function searchPaged($q, $limit, $offset)
+    {
+        $q = trim($q);
+        if ($q === '') return [];
+
+        $like = "%{$q}%";
+
+        $stmt = $this->conn->prepare("
+            SELECT *
+            FROM products
+            WHERE name LIKE :q
+            OR description LIKE :q
+            OR material LIKE :q
+            OR category LIKE :q
+            OR gender LIKE :q
+            ORDER BY created_at DESC
+            LIMIT :lim OFFSET :off
+        ");
+
+        $stmt->bindValue(':q', $like, PDO::PARAM_STR);
+        $stmt->bindValue(':lim', (int)$limit, PDO::PARAM_INT);
+        $stmt->bindValue(':off', (int)$offset, PDO::PARAM_INT);
+
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
 }

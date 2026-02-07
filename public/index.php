@@ -1,21 +1,18 @@
 <?php
 session_start();
-$cartCount = 0;
-
-if (!empty($_SESSION['cart'])) {
-    $cartCount = array_sum($_SESSION['cart']);
-}
-
 
 $page = $_GET['page'] ?? 'home';
+
+// ✅ Save ONLY category/home as return target (never product)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && in_array($page, ['home', 'category'])) {
+    $_SESSION['shop_back'] = $_SERVER['REQUEST_URI'];
+}
 
 require_once "../app/controllers/HomeController.php";
 require_once "../app/controllers/ProductController.php";
 require_once "../app/controllers/PageController.php";
 require_once "../app/controllers/AuthController.php";
 require_once "../app/controllers/CartController.php";
-
-
 
 switch ($page) {
 
@@ -27,12 +24,25 @@ switch ($page) {
         (new ProductController())->category();
         break;
 
+    case 'product':
+        (new ProductController())->show();
+        break;
+
     case 'about':
         (new PageController())->about();
         break;
 
     case 'contact':
         (new PageController())->contact();
+        break;
+
+    // ✅ ONLY ONE route for sending contact form
+    case 'contact-send':
+        (new PageController())->contactProcess();
+        break;
+
+    case 'search':
+        (new ProductController())->search();
         break;
 
     case 'login':
@@ -46,7 +56,7 @@ switch ($page) {
     case 'logout':
         (new AuthController())->logout();
         break;
-    
+
     case 'register':
         (new AuthController())->register();
         break;
@@ -66,12 +76,11 @@ switch ($page) {
     case 'remove-from-cart':
         (new CartController())->remove();
         break;
-    
+
     case 'clear-cart':
         unset($_SESSION['cart']);
         header("Location: ?page=cart");
         exit;
-    
 
     case 'cart-inc':
         (new CartController())->inc();
@@ -81,6 +90,13 @@ switch ($page) {
         (new CartController())->dec();
         break;
 
+    case 'checkout':
+        (new CartController())->checkout();
+        break;
+
+    case 'checkout-process':
+        (new CartController())->checkoutProcess();
+        break;
 
     default:
         echo "404 Page not found";

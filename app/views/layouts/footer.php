@@ -6,7 +6,7 @@
 
             <!-- BRAND -->
             <div class="footer-col">
-                <h3>MyStore</h3>
+                <h3>XARÈA</h3>
                 <p>
                     A modern shoes & clothes store built with PHP, MySQL, and clean design.
                 </p>
@@ -45,7 +45,7 @@
         </div>
 
         <div class="footer-bottom">
-            © <?= date('Y') ?> MyStore. All rights reserved.
+            © <?= date('Y') ?> XARÈA. All rights reserved.
         </div>
 
     </footer>
